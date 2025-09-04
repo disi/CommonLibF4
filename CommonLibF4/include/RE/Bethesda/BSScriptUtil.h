@@ -6,9 +6,9 @@
 #include "RE/Bethesda/GameScript.h"
 #include "RE/Bethesda/TESForms.h"
 // for exception handling
-#include <exception>
 #include "RE/Bethesda/BSScript/TypeInfo.h"
 #include "RE/Bethesda/BSScript/Variable.h"
+#include <exception>
 
 #include "F4SE/Logger.h"
 
@@ -1060,7 +1060,6 @@ namespace RE::BSScript
 		template <class T>
 		[[nodiscard]] __forceinline T UnpackVariable(const Variable& a_var)
 		{
-
 			// Use our helper function to check with __try __except if the variable can be accessed
 			if (!IsValidVariable(a_var)) {
 				return T{};
