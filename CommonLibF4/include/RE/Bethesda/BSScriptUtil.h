@@ -6,9 +6,9 @@
 #include "RE/Bethesda/GameScript.h"
 #include "RE/Bethesda/TESForms.h"
 // for exception handling
+#include <exception>
 #include "RE/Bethesda/BSScript/TypeInfo.h"
 #include "RE/Bethesda/BSScript/Variable.h"
-#include <exception>
 
 #include "F4SE/Logger.h"
 
@@ -49,9 +49,8 @@ namespace RE::BSScript
 	}
 
 	// Helper function to safely check the variable without object unwinding issues.
-	[[nodiscard]] __forceinline __declspec(noinline) bool IsValidVariable(const Variable& a_var) noexcept
+	[[nodiscard]] inline __declspec(noinline) bool IsValidVariable(const Variable& a_var) noexcept
 	{
-		//F4SE::log::warn("IsValidVariable: Called.");
 		__try {
 			if (a_var.is<std::nullptr_t>()) {
 				return false;
@@ -63,11 +62,10 @@ namespace RE::BSScript
 	}
 
 	// A small helper function with the structured exception handler.
-	[[nodiscard]] __forceinline __declspec(noinline) bool IsValidArray_Impl(const void* a_ptr) noexcept
+	[[nodiscard]] inline __declspec(noinline) bool IsValidArray_Impl(const void* a_ptr) noexcept
 	{
 		__try {
 			const auto in = static_cast<const Array*>(a_ptr);
-			// A null pointer is also an invalid case.
 			if (in == nullptr) {
 				return false;
 			}
@@ -79,13 +77,10 @@ namespace RE::BSScript
 	}
 	// New generic helper function to safely check any Array pointer.
 	template <class T>
-	[[nodiscard]] bool IsValidArray(const Variable& a_var) noexcept
+	[[nodiscard]] inline bool IsValidArray(const Variable& a_var) noexcept
 	{
-		//F4SE::log::warn("IsValidArray: Called.");
-		// Check if it is an array first.
 		if (a_var.is<Array>()) {
 			const auto raw_ptr = get<Array>(a_var);
-			// Then call the structured exception handler in a separate function.
 			return IsValidArray_Impl(raw_ptr.get());
 		} else {
 			return false;
@@ -1065,6 +1060,7 @@ namespace RE::BSScript
 		template <class T>
 		[[nodiscard]] __forceinline T UnpackVariable(const Variable& a_var)
 		{
+
 			// Use our helper function to check with __try __except if the variable can be accessed
 			if (!IsValidVariable(a_var)) {
 				return T{};
