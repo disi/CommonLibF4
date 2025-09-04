@@ -1,13 +1,5 @@
 #pragma once
 
-#include <array>
-#include <string>
-#include <string_view>
-#include <stdexcept>
-#include <compare>
-#include <optional>
-#include <iosfwd>
-
 namespace REL
 {
 	class Version
@@ -26,6 +18,32 @@ namespace REL
 		constexpr Version(value_type a_v1, value_type a_v2 = 0, value_type a_v3 = 0, value_type a_v4 = 0) noexcept :
 			_impl{ a_v1, a_v2, a_v3, a_v4 }
 		{}
+
+		explicit constexpr Version(std::string_view a_version)
+		{
+			std::array<value_type, 4> powers{ 1, 1, 1, 1 };
+			std::size_t               position = 0;
+			for (std::size_t i = 0; i < a_version.size(); ++i) {
+				if (a_version[i] == '.') {
+					if (++position == powers.size()) {
+						throw std::invalid_argument("Too many parts in version number.");
+					}
+				} else {
+					powers[position] *= 10;
+				}
+			}
+			position = 0;
+			for (std::size_t i = 0; i < a_version.size(); ++i) {
+				if (a_version[i] == '.') {
+					++position;
+				} else if (a_version[i] < '0' || a_version[i] > '9') {
+					throw std::invalid_argument("Invalid character in version number.");
+				} else {
+					powers[position] /= 10;
+					_impl[position] += static_cast<value_type>((a_version[i] - '0') * powers[position]);
+				}
+			}
+		}
 
 		[[nodiscard]] constexpr reference       operator[](std::size_t a_idx) noexcept { return _impl[a_idx]; }
 		[[nodiscard]] constexpr const_reference operator[](std::size_t a_idx) const noexcept { return _impl[a_idx]; }
@@ -59,7 +77,7 @@ namespace REL
 		[[nodiscard]] constexpr value_type patch() const noexcept { return _impl[2]; }
 		[[nodiscard]] constexpr value_type build() const noexcept { return _impl[3]; }
 
-		[[nodiscard]] std::string string(const std::string_view a_separator = "."sv) const
+		[[nodiscard]] constexpr std::string string(const std::string_view a_separator = "."sv) const
 		{
 			std::string result;
 			for (auto&& ver : _impl) {
@@ -70,7 +88,7 @@ namespace REL
 			return result;
 		}
 
-		[[nodiscard]] std::wstring wstring(const std::wstring_view a_separator = L"."sv) const
+		[[nodiscard]] constexpr std::wstring wstring(const std::wstring_view a_separator = L"."sv) const
 		{
 			std::wstring result;
 			for (auto&& ver : _impl) {
@@ -109,33 +127,24 @@ namespace REL
 	[[nodiscard]] std::optional<Version> GetFileVersion(std::wstring_view a_filename);
 }
 
-#ifndef FMT_VERSION
-#include <fmt/core.h>
-#endif
-
 template <class CharT>
-struct std::formatter<REL::Version, CharT> : std::formatter<std::string, CharT>
+struct std::formatter<REL::Version, CharT> : formatter<std::string, CharT>
 {
 	template <class FormatContext>
 	constexpr auto format(const REL::Version& a_version, FormatContext& a_ctx) const
 	{
-		return std::formatter<std::string, CharT>::format(a_version.string(), a_ctx);
+		return formatter<std::string, CharT>::format(a_version.string(), a_ctx);
 	}
 };
 
 #ifdef FMT_VERSION
 template <class CharT>
-struct fmt::formatter<REL::Version, CharT>
+struct fmt::formatter<REL::Version, CharT> : formatter<std::string, CharT>
 {
-	template <class ParseContext>
-	constexpr auto parse(ParseContext& a_ctx)
-	{
-		return a_ctx.begin();
-	}
 	template <class FormatContext>
-	auto format(const REL::Version& a_version, FormatContext& a_ctx) const
+	auto format(const REL::Version& a_version, FormatContext& a_ctx)
 	{
-		return fmt::format_to(a_ctx.out(), "{}", a_version.string());
+		return formatter<std::string, CharT>::format(a_version.string(), a_ctx);
 	}
 };
 #endif
