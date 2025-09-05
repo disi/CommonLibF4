@@ -48,24 +48,12 @@ namespace RE::BSScript
 		}
 	}
 
-	// Helper function to safely check the variable without object unwinding issues.
-	[[nodiscard]] inline __declspec(noinline) bool IsValidVariable(const Variable& a_var) noexcept
-	{
-		__try {
-			if (a_var.is<std::nullptr_t>()) {
-				return false;
-			}
-			return true;
-		} __except (1) {
-			return false;
-		}
-	}
-
 	// A small helper function with the structured exception handler.
-	[[nodiscard]] inline __declspec(noinline) bool IsValidArray_Impl(const void* a_ptr) noexcept
+	[[nodiscard]] __forceinline __declspec(noinline) bool IsValidArray_Impl(const void* a_ptr) noexcept
 	{
 		__try {
 			const auto in = static_cast<const Array*>(a_ptr);
+			// A null pointer is also an invalid case.
 			if (in == nullptr) {
 				return false;
 			}
@@ -77,10 +65,12 @@ namespace RE::BSScript
 	}
 	// New generic helper function to safely check any Array pointer.
 	template <class T>
-	[[nodiscard]] inline bool IsValidArray(const Variable& a_var) noexcept
+	[[nodiscard]] bool IsValidArray(const Variable& a_var) noexcept
 	{
+		// Check if it is an array first.
 		if (a_var.is<Array>()) {
 			const auto raw_ptr = get<Array>(a_var);
+			// Then call the structured exception handler in a separate function.
 			return IsValidArray_Impl(raw_ptr.get());
 		} else {
 			return false;
@@ -562,12 +552,6 @@ namespace RE::BSScript
 	template <detail::object T>
 	void PackVariable(Variable& a_var, const volatile T* a_val)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			a_var = nullptr;
-			return;
-		}
-
 		if (!a_val) {
 			a_var = nullptr;
 			return;
@@ -618,11 +602,6 @@ namespace RE::BSScript
 	template <detail::cobject T>
 	void PackVariable(Variable& a_var, T a_val)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			a_var = nullptr;
-		}
-
 		const auto success = [&]() {
 			if (a_val.Reference()) {
 				detail::PackVariable(a_var, a_val.Reference());
@@ -714,16 +693,6 @@ namespace RE::BSScript
 	void PackVariable(Variable& a_var, T&& a_val)  //
 		requires(detail::array<std::remove_reference_t<T>>)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			a_var = nullptr;
-		}
-
-		// Use our helper function to check with __try __except if the array is valid
-		if (!IsValidArray<Array>(a_var)) {
-			a_var = nullptr;
-		}
-
 		using value_type = detail::decay_t<typename std::remove_cvref_t<T>::value_type>;
 		using reference_type =
 			std::conditional_t<
@@ -771,11 +740,6 @@ namespace RE::BSScript
 	void PackVariable(Variable& a_var, T&& a_val)  //
 		requires(detail::nullable<std::remove_reference_t<T>>)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			a_var = nullptr;
-		}
-
 		if (a_val) {
 			detail::PackVariable(a_var, *std::forward<T>(a_val));
 		} else {
@@ -866,11 +830,6 @@ namespace RE::BSScript
 	template <detail::cobject T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		const auto result = [&]() -> std::optional<T> {
 			if (!a_var.is<Object>()) {
 				assert(false);
@@ -921,11 +880,6 @@ namespace RE::BSScript
 	template <detail::string T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		if (!a_var.is<BSFixedString>()) {
 			assert(false);
 			return T();
@@ -943,11 +897,6 @@ namespace RE::BSScript
 	template <detail::signed_integral T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		if (!a_var.is<std::int32_t>()) {
 			assert(false);
 			return T();
@@ -959,11 +908,6 @@ namespace RE::BSScript
 	template <detail::unsigned_integral T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		if (!a_var.is<std::uint32_t>()) {
 			assert(false);
 			return T();
@@ -975,11 +919,6 @@ namespace RE::BSScript
 	template <detail::floating_point T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		if (!a_var.is<float>()) {
 			assert(false);
 			return T();
@@ -991,11 +930,6 @@ namespace RE::BSScript
 	template <detail::boolean T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		if (!a_var.is<bool>()) {
 			assert(false);
 			return T();
@@ -1007,11 +941,6 @@ namespace RE::BSScript
 	template <detail::array T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T{};
-		}
-
 		// Use our helper function to check with __try __except if the array is valid
 		if (!IsValidArray<Array>(a_var)) {
 			return T{};
@@ -1042,11 +971,6 @@ namespace RE::BSScript
 	template <detail::nullable T>
 	[[nodiscard]] T UnpackVariable(const Variable& a_var)
 	{
-		// Use our helper function to check with __try __except if the variable can be accessed
-		if (!IsValidVariable(a_var)) {
-			return T();
-		}
-
 		if (a_var.is<std::nullptr_t>()) {
 			return T();
 		} else {
@@ -1060,16 +984,6 @@ namespace RE::BSScript
 		template <class T>
 		[[nodiscard]] __forceinline T UnpackVariable(const Variable& a_var)
 		{
-			// Use our helper function to check with __try __except if the variable can be accessed
-			if (!IsValidVariable(a_var)) {
-				return T{};
-			}
-
-			// Use our helper function to check with __try __except if the array is valid
-			if (!IsValidArray<Array>(a_var)) {
-				return T{};
-			}
-
 			return BSScript::UnpackVariable<decay_t<T>>(a_var);
 		}
 
